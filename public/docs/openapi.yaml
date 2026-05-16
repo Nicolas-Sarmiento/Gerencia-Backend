@@ -1,0 +1,1059 @@
+openapi: 3.0.3
+info:
+  title: EmpServ - API Backend
+  description: |
+    API para la landing page y CMS de la empresa de gestión de residuos.
+
+    ## Autenticación
+    Los endpoints protegidos (CMS) requieren un token Bearer obtenido via `/api/login`.
+    Enviar el header: `Authorization: Bearer {token}`
+
+    ## Endpoints Públicos (Landing Page)
+    - `GET /api/products` - Listar productos
+    - `GET /api/products/{id}` - Ver producto
+    - `GET /api/articles` - Listar artículos
+    - `GET /api/articles/{id}` - Ver artículo
+    - `GET /api/waste/latest` - Último registro de residuos
+    - `POST /api/quotes` - Enviar cotización
+
+    ## Endpoints Protegidos (CMS)
+    Requieren `Authorization: Bearer {token}`. Incluyen CRUD completo de productos, artículos, residuos y gestión de cotizaciones.
+  version: 1.0.0
+  contact:
+    name: Equipo Backend
+
+servers:
+  - url: http://localhost:8000
+    description: Desarrollo local
+  - url: https://tu-dominio.com
+    description: Producción
+
+tags:
+  - name: Auth
+    description: Registro, login y logout
+  - name: Products
+    description: CRUD de productos (público + CMS)
+  - name: Product Images
+    description: Gestión de imágenes de productos (CMS)
+  - name: Articles
+    description: CRUD de artículos/blog (público + CMS)
+  - name: Waste
+    description: Registros anuales de residuos procesados
+  - name: Quotes
+    description: Cotizaciones (público + CMS)
+
+paths:
+  # ──────────────── AUTH ────────────────
+  /api/register:
+    post:
+      tags: [Auth]
+      summary: Registrar usuario administrador
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firstName, lastName, email, password, password_confirmation]
+              properties:
+                firstName:
+                  type: string
+                  example: Juan
+                lastName:
+                  type: string
+                  example: Pérez
+                email:
+                  type: string
+                  format: email
+                  example: admin@empresa.com
+                password:
+                  type: string
+                  minLength: 8
+                  example: secret123
+                password_confirmation:
+                  type: string
+                  example: secret123
+      responses:
+        '201':
+          description: Usuario creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@empresa.com
+                password:
+                  type: string
+                  example: secret123
+      responses:
+        '200':
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Credenciales incorrectas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /api/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Sesión cerrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /api/user:
+    get:
+      tags: [Auth]
+      summary: Obtener usuario autenticado
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Datos del usuario
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+
+  # ──────────────── PRODUCTS ────────────────
+  /api/products:
+    get:
+      tags: [Products]
+      summary: Listar todos los productos (público)
+      responses:
+        '200':
+          description: Lista de productos con imágenes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductWithImages'
+    post:
+      tags: [Products]
+      summary: Crear producto con imágenes (CMS)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [name, description]
+              properties:
+                name:
+                  type: string
+                  example: Contenedor Industrial 1100L
+                description:
+                  type: string
+                  example: Contenedor de alta resistencia para residuos industriales
+                "images[0][file]":
+                  type: string
+                  format: binary
+                  description: Archivo de imagen (jpeg, png, jpg, webp, svg). Máx 10MB
+                "images[0][alt]":
+                  type: string
+                  example: Vista frontal del contenedor
+                "images[1][file]":
+                  type: string
+                  format: binary
+                "images[1][alt]":
+                  type: string
+            encoding:
+              "images[0][file]":
+                contentType: image/*
+              "images[1][file]":
+                contentType: image/*
+      responses:
+        '201':
+          description: Producto creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductWithImages'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/products/{id}:
+    get:
+      tags: [Products]
+      summary: Ver un producto (público)
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Producto con imágenes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductWithImages'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Products]
+      summary: Actualizar datos del producto (CMS)
+      description: Solo actualiza nombre y descripción. Las imágenes se gestionan con endpoints dedicados.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '200':
+          description: Producto actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductWithImages'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags: [Products]
+      summary: Eliminar producto y sus imágenes (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      responses:
+        '200':
+          description: Producto eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/products/{id}/images:
+    post:
+      tags: [Product Images]
+      summary: Agregar imágenes a un producto (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ProductId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: ["images[0][file]"]
+              properties:
+                "images[0][file]":
+                  type: string
+                  format: binary
+                "images[0][alt]":
+                  type: string
+                "images[1][file]":
+                  type: string
+                  format: binary
+                "images[1][alt]":
+                  type: string
+      responses:
+        '201':
+          description: Imágenes agregadas
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "2 imagen(es) agregada(s)"
+                  images:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ProductImage'
+
+  /api/products/{productId}/images/{imageId}:
+    delete:
+      tags: [Product Images]
+      summary: Eliminar una imagen de un producto (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: imageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Imagen eliminada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  # ──────────────── ARTICLES ────────────────
+  /api/articles:
+    get:
+      tags: [Articles]
+      summary: Listar todos los artículos (público)
+      responses:
+        '200':
+          description: Lista de artículos con autor y multimedia
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ArticleWithRelations'
+    post:
+      tags: [Articles]
+      summary: Crear artículo con multimedia (CMS)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title:
+                  type: string
+                  example: Guía de reciclaje 2026
+                "multimedia[0][type]":
+                  type: string
+                  enum: [TEXT, IMAGE, VIDEO]
+                  example: TEXT
+                "multimedia[0][content]":
+                  type: string
+                  example: "Este es el contenido del bloque de texto..."
+                "multimedia[0][resourceUrl]":
+                  type: string
+                  description: URL del recurso (para VIDEO)
+                "multimedia[0][file]":
+                  type: string
+                  format: binary
+                  description: Archivo de imagen (solo cuando type=IMAGE). Máx 10MB
+                "multimedia[1][type]":
+                  type: string
+                  enum: [TEXT, IMAGE, VIDEO]
+                "multimedia[1][content]":
+                  type: string
+                "multimedia[1][file]":
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Artículo creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleWithRelations'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/articles/{id}:
+    get:
+      tags: [Articles]
+      summary: Ver un artículo (público)
+      parameters:
+        - $ref: '#/components/parameters/ArticleId'
+      responses:
+        '200':
+          description: Artículo con multimedia y autor
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleWithRelations'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Articles]
+      summary: Actualizar artículo (CMS)
+      description: |
+        Actualiza título y/o bloques multimedia. Para multimedia:
+        - Enviar `multimediaId` para actualizar un bloque existente
+        - Omitir `multimediaId` para crear un bloque nuevo
+        - Los bloques existentes que NO se envíen serán eliminados
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ArticleId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                "multimedia[0][multimediaId]":
+                  type: string
+                  format: uuid
+                  description: ID del bloque existente (omitir para crear nuevo)
+                "multimedia[0][type]":
+                  type: string
+                  enum: [TEXT, IMAGE, VIDEO]
+                "multimedia[0][content]":
+                  type: string
+                "multimedia[0][resourceUrl]":
+                  type: string
+                "multimedia[0][file]":
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Artículo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArticleWithRelations'
+    delete:
+      tags: [Articles]
+      summary: Eliminar artículo (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ArticleId'
+      responses:
+        '200':
+          description: Artículo eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  # ──────────────── WASTE ────────────────
+  /api/waste/latest:
+    get:
+      tags: [Waste]
+      summary: Obtener último registro de residuos (público)
+      responses:
+        '200':
+          description: Registro más reciente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualProcessedWaste'
+        '404':
+          description: No hay registros
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /api/waste:
+    get:
+      tags: [Waste]
+      summary: Listar todos los registros de residuos (CMS)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista ordenada por año descendente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AnnualProcessedWaste'
+    post:
+      tags: [Waste]
+      summary: Crear registro anual de residuos (CMS)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [year, processedWaste]
+              properties:
+                year:
+                  type: string
+                  format: date
+                  example: "2025-01-01"
+                  description: Fecha del año (se extrae el año)
+                processedWaste:
+                  type: number
+                  minimum: 0
+                  example: 15000.5
+      responses:
+        '201':
+          description: Registro creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualProcessedWaste'
+        '409':
+          description: Ya existe un registro para ese año
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /api/waste/{id}:
+    get:
+      tags: [Waste]
+      summary: Ver registro específico (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WasteId'
+      responses:
+        '200':
+          description: Registro de residuos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualProcessedWaste'
+    put:
+      tags: [Waste]
+      summary: Actualizar registro (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WasteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                year:
+                  type: string
+                  format: date
+                processedWaste:
+                  type: number
+                  minimum: 0
+      responses:
+        '200':
+          description: Registro actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnualProcessedWaste'
+        '409':
+          description: Año duplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+    delete:
+      tags: [Waste]
+      summary: Eliminar registro (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/WasteId'
+      responses:
+        '200':
+          description: Registro eliminado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  # ──────────────── QUOTES ────────────────
+  /api/quotes:
+    post:
+      tags: [Quotes]
+      summary: Enviar cotización desde landing page (público)
+      description: |
+        Crea una cotización con productos seleccionados.
+        - Si el email del cliente ya existe, actualiza sus datos de contacto.
+        - Envía un correo de notificación al equipo administrativo.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [client_name, client_email, client_phone, items]
+              properties:
+                client_name:
+                  type: string
+                  maxLength: 50
+                  example: María García
+                client_email:
+                  type: string
+                  format: email
+                  maxLength: 80
+                  example: maria@empresa.com
+                client_phone:
+                  type: string
+                  maxLength: 50
+                  example: "+57 300 123 4567"
+                description:
+                  type: string
+                  maxLength: 2000
+                  example: Necesitamos 10 contenedores para la planta nueva
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [productId]
+                    properties:
+                      productId:
+                        type: string
+                        format: uuid
+                        description: ID del producto (debe existir)
+                      quantity:
+                        type: integer
+                        minimum: 1
+                        default: 1
+            example:
+              client_name: María García
+              client_email: maria@empresa.com
+              client_phone: "+57 300 123 4567"
+              description: Necesitamos contenedores para la planta
+              items:
+                - productId: "550e8400-e29b-41d4-a716-446655440000"
+                  quantity: 5
+                - productId: "6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+                  quantity: 2
+      responses:
+        '201':
+          description: Cotización enviada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Cotización enviada exitosamente. Nos pondremos en contacto pronto.
+                  quoteId:
+                    type: string
+                    format: uuid
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    get:
+      tags: [Quotes]
+      summary: Listar cotizaciones (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filtrar por estado
+          schema:
+            type: string
+            enum: [PENDIENTE, EN_REVISION, RESPONDIDA, RECHAZADA]
+      responses:
+        '200':
+          description: Lista de cotizaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/QuoteWithRelations'
+
+  /api/quotes/{id}:
+    get:
+      tags: [Quotes]
+      summary: Ver cotización específica (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QuoteId'
+      responses:
+        '200':
+          description: Cotización con cliente y productos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteWithRelations'
+    delete:
+      tags: [Quotes]
+      summary: Eliminar cotización (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QuoteId'
+      responses:
+        '200':
+          description: Cotización eliminada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+
+  /api/quotes/{id}/status:
+    patch:
+      tags: [Quotes]
+      summary: Cambiar estado de cotización (CMS)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/QuoteId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [PENDIENTE, EN_REVISION, RESPONDIDA, RECHAZADA]
+      responses:
+        '200':
+          description: Estado actualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteWithRelations'
+
+# ──────────────── COMPONENTS ────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token obtenido de POST /api/login
+
+  parameters:
+    ProductId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    ArticleId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    WasteId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    QuoteId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    Unauthenticated:
+      description: No autenticado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "No estás autenticado. Debes iniciar sesión o enviar el Token Bearer."
+    ValidationError:
+      description: Error de validación
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "The name field is required."
+              errors:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    type: string
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "No query results for model"
+
+  schemas:
+    ErrorMessage:
+      type: object
+      properties:
+        message:
+          type: string
+
+    User:
+      type: object
+      properties:
+        userId:
+          type: string
+          format: uuid
+        firstName:
+          type: string
+        lastName:
+          type: string
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+          example: "1|abc123def456..."
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: '#/components/schemas/User'
+
+    ProductImage:
+      type: object
+      properties:
+        imageId:
+          type: string
+          format: uuid
+        imageurl:
+          type: string
+          example: /storage/products/abc123.jpg
+        alt:
+          type: string
+          example: Vista frontal del producto
+        productId:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ProductWithImages:
+      type: object
+      properties:
+        productId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        images:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductImage'
+
+    Multimedia:
+      type: object
+      properties:
+        multimediaId:
+          type: string
+          format: uuid
+        content:
+          type: string
+          nullable: true
+        resourceUrl:
+          type: string
+          nullable: true
+          example: /storage/articles/img123.jpg
+        type:
+          type: string
+          enum: [TEXT, IMAGE, VIDEO]
+        articleId:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ArticleWithRelations:
+      type: object
+      properties:
+        articleId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        userId:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+        multimedia:
+          type: array
+          items:
+            $ref: '#/components/schemas/Multimedia'
+
+    AnnualProcessedWaste:
+      type: object
+      properties:
+        wasteId:
+          type: string
+          format: uuid
+        year:
+          type: string
+          format: date
+        processedWaste:
+          type: number
+          example: 15000.5
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Client:
+      type: object
+      properties:
+        clientId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        phone:
+          type: string
+        mail:
+          type: string
+          format: email
+
+    QuoteItem:
+      type: object
+      properties:
+        itemquoteId:
+          type: string
+          format: uuid
+        quoteId:
+          type: string
+          format: uuid
+        productId:
+          type: string
+          format: uuid
+        quantity:
+          type: integer
+        requestDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+        description:
+          type: string
+        product:
+          $ref: '#/components/schemas/ProductWithImages'
+
+    QuoteWithRelations:
+      type: object
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        clientId:
+          type: string
+          format: uuid
+        requestDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [PENDIENTE, EN_REVISION, RESPONDIDA, RECHAZADA]
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        client:
+          $ref: '#/components/schemas/Client'
+        quoted_Items:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteItem'

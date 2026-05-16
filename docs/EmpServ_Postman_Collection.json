@@ -1,0 +1,356 @@
+{
+  "info": {
+    "name": "EmpServ - Pruebas API Backend",
+    "description": "Colección de pruebas completa para la API (Pública y CMS).\n\n## 🖼️ Instrucciones para Imágenes\nLos endpoints de creación que requieren archivos (Productos, Artículos, Imágenes) están configurados para usar la variable `{{image_path}}`.\n\n### ¿Cómo configurarlo?\n1. Ve a la pestaña **Variables** de esta colección.\n2. En la variable `image_path`, coloca la ruta absoluta a una imagen de prueba en tu equipo (ejemplo: `/home/niichan/Documents/test.jpg` o `C:/Users/test.jpg`).\n3. **Importante:** En Postman, ve a **Settings (⚙️) -> General** y habilita la opción **\"Allow reading files outside working directory\"** para que Postman pueda leer la imagen de esa ruta.\n\n*(Alternativamente, puedes ir a la pestaña 'Body' del request, borrar el campo de la imagen, agregarlo de nuevo seleccionando tipo 'File' y eligiendo el archivo manualmente).* \n\n## 🔄 Variables Automáticas\nEsta colección extrae automáticamente el `token` al hacer Login, y guarda los IDs generados (`product_id`, `article_id`, `quote_id`, `waste_id`) para usarlos en los requests siguientes.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" },
+    { "key": "token", "value": "" },
+    { "key": "product_id", "value": "" },
+    { "key": "article_id", "value": "" },
+    { "key": "waste_id", "value": "" },
+    { "key": "quote_id", "value": "" },
+    { "key": "image_id", "value": "" },
+    { "key": "block_id", "value": "" },
+    { "key": "image_path", "value": "/home/niichan/Documents/test.jpg" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Registrar Admin",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 201 or 422', function () { pm.expect(pm.response.code).to.be.oneOf([201, 422]); });" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/register", "host": ["{{baseUrl}}"], "path": ["api", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Juan\",\n  \"lastName\": \"Pérez\",\n  \"email\": \"admin@empresa.com\",\n  \"password\": \"secret123\",\n  \"password_confirmation\": \"secret123\"\n}", "options": { "raw": { "language": "json" } } }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "if (pm.response.code === 200) {", "    var jsonData = pm.response.json();", "    pm.collectionVariables.set('token', jsonData.access_token || jsonData.token);", "}" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/login", "host": ["{{baseUrl}}"], "path": ["api", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"admin@empresa.com\",\n  \"password\": \"secret123\"\n}", "options": { "raw": { "language": "json" } } }
+          }
+        },
+        {
+          "name": "User Profile",
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/user", "host": ["{{baseUrl}}"], "path": ["api", "user"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/logout", "host": ["{{baseUrl}}"], "path": ["api", "logout"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "Listar Productos",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "if (pm.response.code === 200) { var data = pm.response.json(); if(data.length > 0) pm.collectionVariables.set('product_id', data[0].productId || data[0].id); }" ] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api", "products"] }
+          }
+        },
+        {
+          "name": "Crear Producto",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "if (pm.response.code === 201) { pm.collectionVariables.set('product_id', pm.response.json().productId || pm.response.json().id); }" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/products", "host": ["{{baseUrl}}"], "path": ["api", "products"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name", "value": "Contenedor Industrial 1100L", "type": "text" },
+                { "key": "description", "value": "Contenedor de alta resistencia para residuos industriales", "type": "text" },
+                { "key": "images[0][file]", "type": "file", "src": "{{image_path}}" },
+                { "key": "images[0][alt]", "value": "Vista frontal del contenedor", "type": "text" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ver Producto",
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/products/{{product_id}}", "host": ["{{baseUrl}}"], "path": ["api", "products", "{{product_id}}"] }
+          }
+        },
+        {
+          "name": "Actualizar Producto",
+          "request": {
+            "method": "PUT",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/products/{{product_id}}", "host": ["{{baseUrl}}"], "path": ["api", "products", "{{product_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Contenedor Actualizado\",\n  \"description\": \"Descripción actualizada\"\n}", "options": { "raw": { "language": "json" } } }
+          }
+        },
+        {
+          "name": "Eliminar Producto",
+          "request": {
+            "method": "DELETE",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/products/{{product_id}}", "host": ["{{baseUrl}}"], "path": ["api", "products", "{{product_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Product Images",
+      "item": [
+        {
+          "name": "Añadir Imagen a Producto",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "if (pm.response.code === 201 && pm.response.json().images && pm.response.json().images.length > 0) { pm.collectionVariables.set('image_id', pm.response.json().images[0].imageId || pm.response.json().images[0].id); }" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/products/{{product_id}}/images", "host": ["{{baseUrl}}"], "path": ["api", "products", "{{product_id}}", "images"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "images[0][file]", "type": "file", "src": "{{image_path}}" },
+                { "key": "images[0][alt]", "value": "Nueva vista", "type": "text" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Eliminar Imagen",
+          "request": {
+            "method": "DELETE",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/products/{{product_id}}/images/{{image_id}}", "host": ["{{baseUrl}}"], "path": ["api", "products", "{{product_id}}", "images", "{{image_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Articles",
+      "item": [
+        {
+          "name": "Listar Artículos",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "if (pm.response.code === 200) { var data = pm.response.json(); if(data.length > 0) pm.collectionVariables.set('article_id', data[0].articleId || data[0].id); }" ] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/articles", "host": ["{{baseUrl}}"], "path": ["api", "articles"] }
+          }
+        },
+        {
+          "name": "Crear Artículo",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "if (pm.response.code === 201) { pm.collectionVariables.set('article_id', pm.response.json().articleId || pm.response.json().id); if(pm.response.json().multimedia && pm.response.json().multimedia.length > 0) { pm.collectionVariables.set('block_id', pm.response.json().multimedia[0].multimediaId || pm.response.json().multimedia[0].id); } }" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/articles", "host": ["{{baseUrl}}"], "path": ["api", "articles"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "title", "value": "Guía de reciclaje 2026", "type": "text" },
+                { "key": "multimedia[0][type]", "value": "TEXT", "type": "text" },
+                { "key": "multimedia[0][content]", "value": "Este es el contenido del bloque de texto...", "type": "text" },
+                { "key": "multimedia[1][type]", "value": "IMAGE", "type": "text" },
+                { "key": "multimedia[1][file]", "type": "file", "src": "{{image_path}}" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Ver Artículo",
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/articles/{{article_id}}", "host": ["{{baseUrl}}"], "path": ["api", "articles", "{{article_id}}"] }
+          }
+        },
+        {
+          "name": "Actualizar Artículo",
+          "request": {
+            "method": "PUT",
+            "header": [ {"key": "Accept", "value": "application/json"}, {"key": "Content-Type", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/articles/{{article_id}}", "host": ["{{baseUrl}}"], "path": ["api", "articles", "{{article_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Título actualizado\",\n  \"multimedia\": [\n    {\n      \"multimediaId\": \"{{block_id}}\",\n      \"type\": \"TEXT\",\n      \"content\": \"Texto anterior actualizado\"\n    },\n    {\n      \"type\": \"TEXT\",\n      \"content\": \"¡Bloque totalmente nuevo!\"\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            }
+          }
+        },
+        {
+          "name": "Eliminar Artículo",
+          "request": {
+            "method": "DELETE",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/articles/{{article_id}}", "host": ["{{baseUrl}}"], "path": ["api", "articles", "{{article_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Waste",
+      "item": [
+        {
+          "name": "Último Registro",
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/waste/latest", "host": ["{{baseUrl}}"], "path": ["api", "waste", "latest"] }
+          }
+        },
+        {
+          "name": "Listar Registros",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "if (pm.response.code === 200) { var data = pm.response.json(); if(data.length > 0) pm.collectionVariables.set('waste_id', data[0].wasteId || data[0].id); }" ] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/waste", "host": ["{{baseUrl}}"], "path": ["api", "waste"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        },
+        {
+          "name": "Crear Registro",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 201 or 409', function () { pm.expect(pm.response.code).to.be.oneOf([201, 409]); });", "if (pm.response.code === 201) { pm.collectionVariables.set('waste_id', pm.response.json().wasteId || pm.response.json().id); }" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/waste", "host": ["{{baseUrl}}"], "path": ["api", "waste"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": { "mode": "raw", "raw": "{\n  \"year\": \"2025-01-01\",\n  \"processedWaste\": 15000.5\n}", "options": { "raw": { "language": "json" } } }
+          }
+        },
+        {
+          "name": "Ver Registro",
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/waste/{{waste_id}}", "host": ["{{baseUrl}}"], "path": ["api", "waste", "{{waste_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        },
+        {
+          "name": "Actualizar Registro",
+          "request": {
+            "method": "PUT",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/waste/{{waste_id}}", "host": ["{{baseUrl}}"], "path": ["api", "waste", "{{waste_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": { "mode": "raw", "raw": "{\n  \"year\": \"2025-01-01\",\n  \"processedWaste\": 16000\n}", "options": { "raw": { "language": "json" } } }
+          }
+        },
+        {
+          "name": "Eliminar Registro",
+          "request": {
+            "method": "DELETE",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/waste/{{waste_id}}", "host": ["{{baseUrl}}"], "path": ["api", "waste", "{{waste_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Quotes",
+      "item": [
+        {
+          "name": "Enviar Cotización",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 201', function () { pm.response.to.have.status(201); });", "if (pm.response.code === 201) { pm.collectionVariables.set('quote_id', pm.response.json().quoteId || pm.response.json().id); }" ] } }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/quotes", "host": ["{{baseUrl}}"], "path": ["api", "quotes"] },
+            "body": { "mode": "raw", "raw": "{\n  \"client_name\": \"María García\",\n  \"client_email\": \"maria@empresa.com\",\n  \"client_phone\": \"+57 300 123 4567\",\n  \"description\": \"Necesitamos contenedores para la planta\",\n  \"items\": [\n    {\n      \"productId\": \"{{product_id}}\",\n      \"quantity\": 5\n    }\n  ]\n}", "options": { "raw": { "language": "json" } } }
+          }
+        },
+        {
+          "name": "Listar Cotizaciones",
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [ "pm.test('Status is 200', function () { pm.response.to.have.status(200); });", "if (pm.response.code === 200) { var data = pm.response.json(); if(data.length > 0) pm.collectionVariables.set('quote_id', data[0].quoteId || data[0].id); }" ] } }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/quotes", "host": ["{{baseUrl}}"], "path": ["api", "quotes"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        },
+        {
+          "name": "Ver Cotización",
+          "request": {
+            "method": "GET",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/quotes/{{quote_id}}", "host": ["{{baseUrl}}"], "path": ["api", "quotes", "{{quote_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        },
+        {
+          "name": "Cambiar Estado Cotización",
+          "request": {
+            "method": "PATCH",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/quotes/{{quote_id}}/status", "host": ["{{baseUrl}}"], "path": ["api", "quotes", "{{quote_id}}", "status"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] },
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"RESPONDIDA\"\n}", "options": { "raw": { "language": "json" } } }
+          }
+        },
+        {
+          "name": "Eliminar Cotización",
+          "request": {
+            "method": "DELETE",
+            "header": [ {"key": "Accept", "value": "application/json"} ],
+            "url": { "raw": "{{baseUrl}}/api/quotes/{{quote_id}}", "host": ["{{baseUrl}}"], "path": ["api", "quotes", "{{quote_id}}"] },
+            "auth": { "type": "bearer", "bearer": [ { "key": "token", "value": "{{token}}", "type": "string" } ] }
+          }
+        }
+      ]
+    }
+  ]
+}
