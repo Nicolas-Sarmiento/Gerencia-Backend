@@ -116,6 +116,74 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorMessage'
 
+  /api/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Solicitar recuperación de contraseña
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@empresa.com
+      responses:
+        '200':
+          description: Código enviado si el correo existe
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/reset-password:
+    post:
+      tags: [Auth]
+      summary: Restablecer contraseña con código
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code, password, password_confirmation]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: admin@empresa.com
+                code:
+                  type: string
+                  example: "123456"
+                password:
+                  type: string
+                  minLength: 8
+                  example: newSecret123
+                password_confirmation:
+                  type: string
+                  example: newSecret123
+      responses:
+        '200':
+          description: Contraseña restablecida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Código inválido o expirado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
   /api/logout:
     post:
       tags: [Auth]
@@ -143,6 +211,46 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+
+  /api/user/password:
+    put:
+      tags: [Auth]
+      summary: Cambiar contraseña
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password, new_password_confirmation]
+              properties:
+                current_password:
+                  type: string
+                  example: oldSecret123
+                new_password:
+                  type: string
+                  minLength: 8
+                  example: newSecret123
+                new_password_confirmation:
+                  type: string
+                  example: newSecret123
+      responses:
+        '200':
+          description: Contraseña actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '400':
+          description: Contraseña actual incorrecta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorMessage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   # ──────────────── PRODUCTS ────────────────
   /api/products:
