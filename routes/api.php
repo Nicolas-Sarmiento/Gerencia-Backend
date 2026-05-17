@@ -12,6 +12,8 @@ use App\Http\Controllers\QuoteController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/login', [AuthController::class, 'unauthenticated'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 
 // Public Routes (Landing Page)
 Route::get('/products', [ProductController::class, 'index']);
@@ -24,6 +26,7 @@ Route::post('/quotes', [QuoteController::class, 'store']);
 // Protected Routes (CMS)
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
+    Route::put('/user/password', [AuthController::class, 'changePassword']);
     
     Route::get('/user', function (Request $request) {
         return $request->user();

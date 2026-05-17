@@ -21,7 +21,7 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .header {
-            background-color: #2d6a4f;
+            background-color: #2F569D;
             color: #ffffff;
             padding: 24px;
             text-align: center;
@@ -36,8 +36,8 @@
         .section-title {
             font-size: 16px;
             font-weight: bold;
-            color: #2d6a4f;
-            border-bottom: 2px solid #e9ecef;
+            color: #2F569D;
+            border-bottom: 2px solid #A8CF45;
             padding-bottom: 8px;
             margin-bottom: 16px;
         }
@@ -59,7 +59,7 @@
             margin-top: 12px;
         }
         th {
-            background-color: #2d6a4f;
+            background-color: #2F569D;
             color: #fff;
             padding: 10px 12px;
             text-align: left;
@@ -82,7 +82,7 @@
         }
         .description-box {
             background-color: #f8f9fa;
-            border-left: 4px solid #2d6a4f;
+            border-left: 4px solid #A8CF45;
             padding: 12px 16px;
             margin-top: 12px;
             border-radius: 0 4px 4px 0;
@@ -112,7 +112,7 @@
             </div>
             <div class="info-row">
                 <span class="info-label">Fecha solicitud:</span>
-                <span class="info-value">{{ \Carbon\Carbon::parse($quote->requestDate)->format('d/m/Y H:i') }}</span>
+                <span class="info-value">{{ \Carbon\Carbon::parse($quote->requestDate)->setTimezone('America/Bogota')->format('d/m/Y h:i A') }}</span>
             </div>
 
             @if($quote->description)

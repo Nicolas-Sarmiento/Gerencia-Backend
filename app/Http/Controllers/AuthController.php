@@ -72,4 +72,89 @@ class AuthController extends Controller
             'message' => 'Sesión cerrada correctamente'
         ]);
     }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'La contraseña actual es incorrecta.'
+            ], 400);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'message' => 'Contraseña actualizada correctamente.'
+        ]);
+    }
+
+    public function forgotPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $code = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->updateOrInsert(
+            ['email' => $request->email],
+            [
+                'token' => Hash::make($code),
+                'created_at' => now()
+            ]
+        );
+
+        \Illuminate\Support\Facades\Mail::to($request->email)->send(new \App\Mail\PasswordRecoveryMail($code));
+
+        return response()->json([
+            'message' => 'Si el correo existe en nuestros registros, se ha enviado un código de recuperación.'
+        ]);
+    }
+
+    public function resetPassword(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+            'code' => 'required|string|size:6',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $reset = \Illuminate\Support\Facades\DB::table('password_reset_tokens')
+            ->where('email', $request->email)
+            ->first();
+
+        if (!$reset || !Hash::check($request->code, $reset->token)) {
+            return response()->json([
+                'message' => 'El código de recuperación es inválido o ha expirado.'
+            ], 400);
+        }
+
+        if (\Carbon\Carbon::parse($reset->created_at)->addMinutes(15)->isPast()) {
+            \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+            return response()->json([
+                'message' => 'El código de recuperación ha expirado.'
+            ], 400);
+        }
+
+        $user = User::where('email', $request->email)->first();
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        \Illuminate\Support\Facades\DB::table('password_reset_tokens')->where('email', $request->email)->delete();
+
+        // Also delete current tokens to force re-login
+        $user->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Contraseña restablecida correctamente. Por favor inicie sesión con su nueva contraseña.'
+        ]);
+    }
 }
