@@ -29,9 +29,10 @@ COPY . /var/www/html
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+ENV COMPOSER_ALLOW_SUPERUSER 1
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+RUN composer install --no-dev --optimize-autoloader --no-interaction --ignore-platform-reqs
 
 # Set permissions for storage and cache directories
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
