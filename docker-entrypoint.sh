@@ -27,5 +27,9 @@ php artisan view:cache
 echo "Running migrations..."
 php artisan migrate --force
 
+# Create public storage symlink
+echo "Creating storage link..."
+php artisan storage:link --force
+
 # Execute the container's main process (Apache)
 exec "$@"
