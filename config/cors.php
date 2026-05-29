@@ -28,10 +28,11 @@ return [
             'http://127.0.0.1:3000',
             'http://127.0.0.1:5173',
             'http://127.0.0.1:8000',
+            'null',
         ],
 
     'allowed_origins_patterns' => env('CORS_ALLOW_ALL_ORIGINS_WITH_CREDENTIALS', false)
-        ? ['/^https?:\/\/.*$/']
+        ? ['/^(https?:\/\/.*|null)$/']
         : (env('CORS_ALLOWED_ORIGINS_PATTERNS') ? explode(',', env('CORS_ALLOWED_ORIGINS_PATTERNS')) : []),
 
     'allowed_headers' => ['*'],
