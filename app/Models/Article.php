@@ -20,7 +20,7 @@ class Article extends Model {
     }
 
     public function multimedia(){
-        return $this->hasMany(Multimedia::class, 'articleId', 'articleId');
+        return $this->hasMany(Multimedia::class, 'articleId', 'articleId')->orderBy('order');
     }
 
 }

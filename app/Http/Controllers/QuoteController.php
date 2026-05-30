@@ -30,8 +30,8 @@ class QuoteController extends Controller
             // Datos de la cotización
             'description' => 'nullable|string|max:2000',
 
-            // Productos seleccionados
-            'items' => 'required|array|min:1',
+            // Productos seleccionados (opcional)
+            'items' => 'nullable|array',
             'items.*.productId' => 'required|string|exists:products,productId',
             'items.*.quantity' => 'nullable|integer|min:1',
         ]);
@@ -64,16 +64,18 @@ class QuoteController extends Controller
                 'description' => $validated['description'] ?? '',
             ]);
 
-            // Crear los items de la cotización
-            foreach ($validated['items'] as $item) {
-                $quote->quoted_Items()->create([
-                    'itemquoteId' => (string) Str::uuid(),
-                    'productId' => $item['productId'],
-                    'quantity' => $item['quantity'] ?? 1,
-                    'requestDate' => now(),
-                    'status' => 'PENDIENTE',
-                    'description' => '',
-                ]);
+            // Crear los items de la cotización (solo si se enviaron productos)
+            if (!empty($validated['items'])) {
+                foreach ($validated['items'] as $item) {
+                    $quote->quoted_Items()->create([
+                        'itemquoteId' => (string) Str::uuid(),
+                        'productId' => $item['productId'],
+                        'quantity' => $item['quantity'] ?? 1,
+                        'requestDate' => now(),
+                        'status' => 'PENDIENTE',
+                        'description' => '',
+                    ]);
+                }
             }
 
             return $quote;

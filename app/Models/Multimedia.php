@@ -14,6 +14,7 @@ class Multimedia extends Model {
         'content',
         'resourceUrl',
         'type',
+        'order',
         'articleId'
     ];
 

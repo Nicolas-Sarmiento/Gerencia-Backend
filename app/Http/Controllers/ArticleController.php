@@ -36,7 +36,9 @@ class ArticleController extends Controller
                     $resourceUrl = $mediaData['resourceUrl'] ?? null;
 
                     if (isset($mediaData['type']) && $mediaData['type'] === 'IMAGE') {
-                        if (isset($mediaData['file']) && $mediaData['file'] instanceof \Illuminate\Http\UploadedFile && $mediaData['file']->isValid()) {
+                        if (!empty($resourceUrl)) {
+                            // Si ya viene una URL (ej. Cloudinary), usarla directamente
+                        } elseif (isset($mediaData['file']) && $mediaData['file'] instanceof \Illuminate\Http\UploadedFile && $mediaData['file']->isValid()) {
                             $path = $mediaData['file']->store('articles', 'public');
                             $resourceUrl = '/storage/' . $path;
                         } elseif ($request->hasFile("multimedia.{$index}.file")) {
@@ -54,6 +56,7 @@ class ArticleController extends Controller
                         'content' => $mediaData['content'] ?? null,
                         'resourceUrl' => $resourceUrl,
                         'type' => $mediaData['type'],
+                        'order' => $index,
                     ]);
                 }
             }
@@ -110,6 +113,7 @@ class ArticleController extends Controller
                         $updateData = [
                             'content' => $mediaData['content'] ?? null,
                             'type' => $mediaData['type'],
+                            'order' => $index,
                         ];
                         if ($resourceUrl !== null) {
                             $updateData['resourceUrl'] = $resourceUrl;
@@ -122,6 +126,7 @@ class ArticleController extends Controller
                             'content' => $mediaData['content'] ?? null,
                             'resourceUrl' => $resourceUrl,
                             'type' => $mediaData['type'],
+                            'order' => $index,
                         ]);
                     }
                 }
